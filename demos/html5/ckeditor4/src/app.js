@@ -15,19 +15,28 @@ document.getElementById('version_editor').innerHTML = 'CKEditor editor: ';
 // Copy the editor content before initializing it.
 Generic.copyContentFromxToy('editor', 'transform_content');
 
+if ( CKEDITOR.env.ie && CKEDITOR.env.version < 9 )
+CKEDITOR.tools.enableHtml5Elements( document );
+
 // Add wiris plugin.
 CKEDITOR.plugins.addExternal('ckeditor_wiris', `${window.location.href}node_modules/@wiris/mathtype-ckeditor4/`, 'plugin.js'); //eslint-disable-line
 
 CKEDITOR.addCss('img.Wirisformula + span.cke_widget_drag_handler_container { display:none  !important; } img.Wirisformula + span.cke_image_resizer, img.Wirisformula + span.cke_widget_drag_handler_container + span.cke_image_resizer { display:none !important; }');
 
-
 // Initialize plugin.
 CKEDITOR.replace('editor', { //eslint-disable-line
   // Proof of Concept
   // 1. Add the 'Enhanced Image' and 'Justify' plugins
+  // Option A. Enhanced Image plugin
   extraPlugins: 'ckeditor_wiris, image2, justify',
   removePlugins: 'image',
   allowedContent: true,
+  extraAllowedContent: 'p, img, math',
+  disallowedContent: '*{text-align*}', // text-align styles and image2 don't go along. It's better to use the styles added by the 'justify' plugin, instead.
+  // Option B. Default Image Plugin
+  // extraPlugins: 'ckeditor_wiris, image, justify',
+
+  // extraAllowedContent: 'img[data-mathml]',
   toolbar: [
     { name: 'basicstyles', items: ['Bold', 'Italic', 'Strike'] },
     {
@@ -51,8 +60,7 @@ CKEDITOR.replace('editor', { //eslint-disable-line
   ],
   removeDialogTabs: 'image:advanced;link:advanced',
   // Enhanced Image Plugin: disable resizer, for the sake of test.
-  // image2_disableResizer: true,
-
+  // image2_disableResizer: true
 });
 
 
@@ -101,6 +109,33 @@ CKEDITOR.on('instanceReady', function(evt) {                     //eslint-disabl
       }
     } while (e.children && e.children.length > 0) 
   });
+
+  // Double-click behavior.
+  // Avoid using Image2 dialog when clicking 'Enter' keystroke
+  // when a Rendered Formula image is currently the selection. 
+  CKEDITOR.on('dialogDefinition', function(evt) {
+    let dialogName = evt.data.name;
+    let dialog = evt.data.dialog;
+
+    if (dialogName == 'image2') {
+      dialog.on('show', function () {
+        editor = evt.data.dialog.getParentEditor();
+        var element = editor.getSelection().getSelectedElement();
+        // Check if there's a Rendered Image formula from MathType
+        var formula = element.$.getElementsByClassName('Wirisformula');
+        if (formula.length > 0) {
+          console.log(formula[0]);
+          let mathml = formula[0].getAttribute('data-mathml');
+          console.log(mathml);
+          // hide the Image2
+          this.hide();        
+          // Show MathType on the selection, instead
+          // editor.execCommand('ckeditor_wiris_openFormulaEditor'); 
+        }
+      });
+    }
+  });
+
 
 });
 
