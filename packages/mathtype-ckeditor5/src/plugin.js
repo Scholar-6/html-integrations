@@ -216,7 +216,7 @@ export default class MathType extends Plugin {
             },
             model: ( viewElement, modelWriter ) => {
                 const formula = MathML.safeXmlDecode( viewElement.getChild( 0 ).getAttribute( 'data-mathml' ) );
-                return modelWriter.createElement( 'mathml', {
+                return modelWriter.writer.createElement( 'mathml', {
                     formula: formula,
                 } );
             }
